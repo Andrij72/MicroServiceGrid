@@ -24,17 +24,17 @@ The goal of the project is to demonstrate a fully working distributed system wit
 
 ## 🧠 Services Overview
 
-| Service | Description | Status | Repository |
-|----------|--------------|---------|-------------|
-| **Product Service** | Manages product catalog | ✅ Implemented | [link](https://github.com/Andrij72/product-service) |
-| **Order Service** | Handles customer orders | ✅ Implemented | [link](https://github.com/Andrij72/order-service) |
-| **Inventory Service** | Tracks product stock levels | 🚧 In progress | [link](https://github.com/Andrij72/inventory-service) |
+| Service | Description | Status | Repository                                               |
+|----------|--------------|---------|----------------------------------------------------------|
+| **Product Service** | Manages product catalog | ✅ Implemented | [link](https://github.com/Andrij72/product-service)      |
+| **Order Service** | Handles customer orders | ✅ Implemented | [link](https://github.com/Andrij72/order-service)        |
+| **Inventory Service** | Tracks product stock levels | 🚧 In progress | [link](https://github.com/Andrij72/inventory-service)    |
 | **Notification Service** | Sends notifications (Email / Viber) |✅ Implemented| [link](https://github.com/Andrij72/notification-service) |
-| **API Gateway** | Central reactive entry point (Spring WebFlux) | ✅ Implemented | [link](https://github.com/Andrij72/gateway) |
-| **Auth Server** | Authentication & Authorization (Keycloak / OAuth2) | ✅ Implemented | - |
-| **Pay Service** | Payment and currency operations | 🕓 Planned | - |
-| **Weather Service** | Weather API integration via Gateway | 🕓 Planned | - |
-| **Currency Service** | Currency rates provider | 🕓 Planned | - |
+| **API Gateway** | Central reactive entry point (Spring WebFlux) | ✅ Implemented | [link](https://github.com/Andrij72/api-gateway)          |
+| **Auth Server** | Authentication & Authorization (Keycloak / OAuth2) | ✅ Implemented | -                                                        |
+| **Pay Service** | Payment and currency operations | 🕓 Planned | -                                                        |
+| **Weather Service** | Weather API integration via Gateway | 🕓 Planned | -                                                        |
+| **Currency Service** | Currency rates provider | 🕓 Planned | -                                                        |
 
 ---
 
