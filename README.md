@@ -109,4 +109,4 @@ This project demonstrates:
 ---
 
 👤 **Author:** [Andrii Kulynch](https://github.com/Andrij72)
-📅 **Version:** 1.0
+📅 **Version:** 0.0.1M
