@@ -1,0 +1,260 @@
+version: "3.9"
+
+networks:
+  microservices-net:
+    external: true
+
+services:
+  # --------------------------
+  # Discovery Service (Eureka)
+  # --------------------------
+  discovery-service:
+    image: andr72/discovery-service:dev-latest
+    container_name: eureka-server
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      EUREKA_INSTANCE_HOSTNAME: discovery-service
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # MySQL for Order Service
+  # --------------------------
+  mysql-order:
+    image: mysql:8.0.32
+    container_name: mysql_order
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_MYSQL_PASS}
+      MYSQL_DATABASE: order_service
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASS}
+    volumes:
+      - order_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_MYSQL_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # MySQL for Inventory Service
+  # --------------------------
+  mysql-inventory:
+    image: mysql:8.0.32
+    container_name: mysql_inventory
+    restart: always
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_MYSQL_PASS}
+      MYSQL_DATABASE: inventory_service
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASS}
+    volumes:
+      - inventory_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${ROOT_MYSQL_PASS} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # MySQL for Keycloak
+  # --------------------------
+  keycloak-mysql:
+    image: mysql:8.0.32
+    container_name: keycloak-mysql
+    restart: always
+    ports:
+      - "3309:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_MYSQL_PASS}
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASS}
+    volumes:
+      - keycloak_db:/var/lib/mysql
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Keycloak
+  # --------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    container_name: keycloak
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "8181:8080"
+    environment:
+      KC_HOSTNAME: keycloak
+      KC_HOSTNAME_STRICT: false
+      KC_PROXY: edge
+
+      DB_VENDOR: MYSQL
+      DB_ADDR: keycloak-mysql
+      DB_DATABASE: keycloak
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASS}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASS}
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import
+    depends_on:
+      - keycloak-mysql
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # MongoDB
+  # --------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
+      MONGO_INITDB_DATABASE: product_service
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Kafka stack
+  # --------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - microservices-net
+
+  broker:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: broker
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # API Gateway
+  # --------------------------
+  api-gateway:
+    image: andr72/api-gateway:dev-latest
+    container_name: api-gateway
+    ports:
+      - "9000:9000"
+    depends_on:
+      - discovery-service
+      - keycloak
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Product Service
+  # --------------------------
+  product-service:
+    image: andr72/product-service:dev-latest
+    container_name: product-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_USER}:${MONGO_PASS}@mongo:27017/product_service?authSource=admin
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Order Service
+  # --------------------------
+  order-service:
+    image: andr72/order-service:dev-latest
+    container_name: order-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-order:3306/order_service
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASS}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:29092
+    depends_on:
+      mysql-order:
+        condition: service_healthy
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Inventory Service
+  # --------------------------
+  inventory-service:
+    image: andr72/inventory-service:dev-latest
+    container_name: inventory-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-inventory:3306/inventory_service
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASS}
+    depends_on:
+      mysql-inventory:
+        condition: service_healthy
+    networks:
+      - microservices-net
+
+  # --------------------------
+  # Frontend Angular
+  # --------------------------
+  frontend:
+    image: andr72/microservice-grid-frontend:dev-latest
+    container_name: microservice-grid-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - microservices-net
+
+# --------------------------
+# Volumes
+# --------------------------
+volumes:
+  keycloak_db:
+  order_mysql_data:
+  inventory_mysql_data:
+  mongo_data:
