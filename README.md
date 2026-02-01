@@ -1,4 +1,14 @@
-# 🧩 Microservice Grid 🧩       
+# 🧩 Microservice Grid 🧩     
+![Java](https://img.shields.io/badge/Java-21-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
+![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.x-blueviolet)
+![Resilience4j](https://img.shields.io/badge/Resilience4j-Fault--Tolerance-blue)
+![Kafka](https://img.shields.io/badge/Kafka-Event--Driven-black)
+![MinIO](https://img.shields.io/badge/MinIO-S3--Compatible-orange)
+![Angular](https://img.shields.io/badge/Angular-20-red)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue)
+![Keycloak](https://img.shields.io/badge/Keycloak-OAuth2-green)
+![Observability](https://img.shields.io/badge/Observability-Prometheus%20%7C%20Grafana-yellow)
 
 ----
 **MicroserviceGrid** is a full-fledged microservices system built on **Spring Boot 3 / Spring Cloud**, featuring a reactive entry point, asynchronous communication, fault-tolerance, monitoring, and centralized management via **Docker Compose**.
@@ -29,56 +39,82 @@ This repository serves as the **orchestrator** for the entire system and include
 - **Angular 20 (Frontend + Admin Panel)**
 
 ---
----
+
 ##  🧠 Services Overview    
-  
-   | Service                  | Description                                        | Status         | Repository                                               |
-   |--------------------------|----------------------------------------------------|----------------|----------------------------------------------------------|
-   | **Product Service**      | Manages product catalog                            | ✅ Implemented  | [link](https://github.com/Andrij72/product-service)      |
-   | **Order Service**        | Handles customer orders                            | ✅ Implemented  | [link](https://github.com/Andrij72/order-service)        |
-   | **Inventory Service**    | Tracks product stock levels                        | 🚧 In progress | [link](https://github.com/Andrij72/inventory-service)    |
-   | **Notification Service** | Sends notifications (Email / Viber)                | ✅ Implemented  | [link](https://github.com/Andrij72/notification-service) |
-   | **API Gateway**          | Central reactive entry point (Spring WebFlux)      | ✅ Implemented  | [link](https://github.com/Andrij72/api-gateway)          |
-   | **Auth Server**          | Authentication & Authorization (Keycloak / OAuth2) | ✅ Implemented  | -                                                        |
-   | **Pay Service**          | Payment and currency operations                    | 🕓 Planned     | -                                                        |
-   
+
+| Service                  | Description                                        | Status              | Repository                                                       |
+|--------------------------|----------------------------------------------------|---------------------|------------------------------------------------------------------|
+| **Frontend (Angular)**   | Shop + Admin Panel                                 | 🚧 ~70% implemented | [link](https://github.com/Andrij72/MicroserviceGridShopFrontEnd) |
+| **Product Service**      | Manages product catalog                            | ✅ Implemented       | [link](https://github.com/Andrij72/product-service)              |
+| **Order Service**        | Handles customer orders                            | ✅ Implemented       | [link](https://github.com/Andrij72/order-service)                |
+| **Inventory Service**    | Tracks product stock levels                        | 🚧 In progress      | [link](https://github.com/Andrij72/inventory-service)            |
+| **Notification Service** | Sends notifications (Email / Viber)               | ✅ Implemented       | [link](https://github.com/Andrij72/notification-service)         |
+| **File Service**         | Manages product images (upload/preview/download)  | ✅ Implemented       | [link](https://github.com/Andrij72/file-service)                 |
+| **API Gateway**          | Central reactive entry point (Spring WebFlux)     | ✅ Implemented       | [link](https://github.com/Andrij72/api-gateway)                  |
+| **Auth Server**          | Authentication & Authorization (Keycloak / OAuth2)| ✅ Implemented       | -                                                                |
+| **Pay Service**          | Payment and currency operations                   | 🕓 Planned          | -                                                                |
+
+---
 
 ---
 ## 🌐 High-Level Architecture
-````text
-🅰️ Angular Frontend
-  Shop + Admin Panel
-       │ HTTP
-       ▼
-🚪 API Gateway
-  Spring Cloud Gateway (WebFlux)
-       │
- ┌─────────────┐  ┌─────────────┐
- │🧾Order Svc  │  │📦Product Svc│
- │ MySQL       │  │ MongoDB     │
- │ REST + Kafka│  │ Kafka       │
- └─────┬───────┘  └─────┬───────┘
-       │               │
-┌──────▼──────┐  ┌─────▼─────────┐
-│🏬 Inventory │  │🔔 Notification│
-│ MySQL       │  │ Kafka Consumer│
-│ REST Sync   │  │ Email / Viber │
-└─────────────┘  └───────────────┘
-       │
-🟠 Kafka Messaging
-       │
-📊 Observability (Prometheus / Grafana / Loki / Tempo)
-🐳 Docker
 
-````
+```` prototext
+    🅰️ Angular Frontend
+      Shop + Admin Panel
+           │ HTTP / JWT
+           ▼
+    🚪 API Gateway
+      Spring Cloud Gateway (WebFlux)
+           │
+     ┌─────────────┐   ┌─────────────┐
+     │🧾Order Svc  │   │📦 Product  │
+     │ MySQL       │   │ MongoDB     │
+     │ REST + Kafka│   │ REST + Kafka│
+     └─────┬───────┘   └─────┬───────┘
+           │                 │
+           │                 │
+    ┌──────▼──────┐    ┌─────▼──────────┐
+    │🏬Inventory  │   │🖼️ File Service │
+    │ MySQL       │    │ MinIO (S3 API) │
+    │ REST Sync   │    │ Upload / View  │
+    └─────────────┘    └─────┬──────────┘
+                             │
+                        ☁️ MinIO
+                  (S3-compatible Object Storage)
+                             │
+                        🔗 Presigned URLs
+                             │
+                        🌍 Browser / Frontend    
+                             
+    🟠 Kafka Messaging
+    ├── Order → Notification
+    ├── Order → Inventory
+    └── Product → Order
+
+    📊 Observability
+    Prometheus / Grafana / Loki / Tempo
+    
+    🐳 Docker / Docker Compose
+    
+ ````
+> The File Service uses **MinIO**, an **S3-compatible object storage**.
+> All image operations rely on the **AWS S3 API**, enabling seamless migration to AWS S3.
+
+
 ### 🔹 Data Flows
+* Client → API Gateway → Order Service – REST CRUD operations
+* Order Service → Inventory Service – synchronous stock availability check* 
+* Order Service → Kafka → Notification Service – order lifecycle events* 
+* Order Service → MySQL – persistent storage of orders and user data* 
+* Product Service ↔ Kafka ↔ Order Service – product-related domain events* 
+* Admin → API Gateway → Product Service – create or update product metadata (without images)* 
+* Admin → API Gateway → File Service – upload or update product images* 
+* File Service → MinIO (S3-compatible API) – store product images as objects* 
+* File Service → Frontend – generate and return presigned preview URLs* 
+* Frontend → MinIO (direct) – load images using presigned URLs (no backend proxying)* 
+* Monitoring & Observability – Prometheus (metrics), Grafana (dashboards), Loki (logs), Tempo (traces
 
-- **Client → API Gateway → Order Service** – REST CRUD requests
-- **Order Service → Inventory Service** – synchronous stock check
-- **Order Service → Kafka → Notification Service** – order/status events
-- **Order Service → MySQL** – store orders and user data
-- **Product Service ↔ Kafka ↔ Order Service** – Product Service receives order events
-- **Monitoring / Observability** – Prometheus, Grafana, Loki, Tempo
 
 ---
 
@@ -98,9 +134,6 @@ This repository serves as the **orchestrator** for the entire system and include
   - Docker-ready production build
 
 
-
-
-
 ---
 
 ### 🚀 Running the Project
@@ -118,7 +151,7 @@ cd microservice-grid
 ```                   
 #### Start all microservices
 ```bash
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker-compose.orchestrator.yml up -d
 ````
 2️⃣ Start Observability Stack
 
@@ -181,7 +214,7 @@ networks:
 
 A complete Postman Collection is included in the project for manual and automated testing of microservices via Gateway and direct endpoints.
 
-📁 **File:** [`MicroServiceGrid.postman_collection.json`](./MicroServiceGrid.postman_collection.json)
+📁 **File:** **[`MicroServiceGrid.postman_collection.json`](./MicroServiceGrid.postman_collection_dev.json)**
 
   
   The collection covers requests for:
@@ -191,7 +224,9 @@ A complete Postman Collection is included in the project for manual and automate
   
   - 📦 **Product Service**
     - Public API: get product by SKU
-    - Admin API: CRUD operations, batch operations, pagination
+    - Admin API: CRUD operations, 
+    batch operations, pagination,
+    image update,
     - Enable / Disable products
   
   - 🧾 **Order Service**
@@ -202,50 +237,70 @@ A complete Postman Collection is included in the project for manual and automate
   - 🏬 **Inventory Service**
     - Stock availability checks
     - Quantity validation
+
+  - 🖼️ **File Service**
+    - Upload product images
+    - Update (replace) existing images
+    - Generate presigned URLs for secure preview
+    - Stream images for download
+    - Decoupled from Product Service (image lifecycle is independent)
+    
+    > MinIO is used as an on-premise S3-compatible storage.
+    > The same code can be migrated to AWS S3 without changes.
   
+        
   - 🔐 **Security**
     - OAuth2 (Client Credentials)
     - Bearer Token flow via Keycloak
   
-  > The Postman collection is the **source of truth** for the API.  
-  > The README does not duplicate the full list of endpoints on purpose.
+    > The Postman collection is the **source of truth** for the API.  
+    > The README does not duplicate the full list of endpoints on purpose.
+
   
-  ---
-  
-  ### 🔹 Quick Reference: Main Endpoints
-  
-  #### Products
-  | Method | Endpoint | Description |
-  |--------|---------|-------------|
-  | `GET` | `/api/v1/products` | Get all products |
-  | `GET` | `/api/v1/products/{{sku}}` | Get product by SKU (public) |
-  | `POST` | `/api/v1/admin/products` | Create a new product (admin) |
-  | `POST` | `/api/v1/admin/products/batch` | Batch create products (admin) |
-  | `PUT` | `/api/v1/admin/products/{{sku}}` | Update product (admin) |
-  | `PATCH` | `/api/v1/admin/products/{{sku}}/enable` | Enable/disable product (admin) |
-  | `DELETE` | `/api/v1/admin/products/batch` | Delete multiple products (admin) |
-  
-  #### Orders
-  | Method | Endpoint | Description |
-  |--------|---------|-------------|
-  | `POST` | `/api/v1/orders` | Create new order |
-  | `GET` | `/api/v1/orders` | Get all orders |
-  | `GET` | `/api/v1/orders?page=0&size=10&status=&email=&sort=` | Get orders with pagination & filters |
-  | `GET` | `/api/v1/orders/{{orderNumber}}` | Get order by number |
-  | `PUT` | `/api/v1/orders/{{orderNumber}}` | Update order (full) |
-  | `PATCH` | `/api/v1/orders/{{orderNbr}}/status` | Update order status |
-  | `DELETE` | `/api/v1/orders/{{orderNumber}}` | Delete order |
-  
-  #### Inventory
-  | Method | Endpoint | Description |
-  |--------|---------|-------------|
-  | `GET` | `/api/v1/inventory?skuCode=&quantity=` | Check inventory availability |
+---
+
+### 🔹 Quick Reference: Main Endpoints
+
+#### Products
+| Method   | Endpoint                                     | Description                      |      
+|----------|----------------------------------------------|----------------------------------|
+| `GET`    | `/api/v1/products`                           | Get all products                 |
+| `GET`    | `/api/v1/products/{{sku}}`                   | Get product by SKU (public)      |
+| `POST`   | `/api/v1/admin/products`                     | Create a new product (admin)     |
+| `POST`   | `/api/v1/admin/products/batch`               | Batch create products (admin)    |
+| `PUT`    | `/api/v1/admin/products/{{sku}}`             | Update product (admin)           |
+| `PATCH`  | `/api/v1/admin/products/{{sku}}/enable`      | Enable/disable product (admin)   |
+| `DELETE` | `/api/v1/admin/products/batch`               | Delete multiple products (admin) |
+
+#### Orders
+| Method   | Endpoint                                             | Description                          |
+|----------|------------------------------------------------------|--------------------------------------|
+| `POST`   | `/api/v1/orders`                                     | Create new order                     |
+| `GET`    | `/api/v1/orders`                                     | Get all orders                       |
+| `GET`    | `/api/v1/orders?page=0&size=10&status=&email=&sort=` | Get orders with pagination & filters |
+| `GET`    | `/api/v1/orders/{{orderNumber}}`                     | Get order by number                  |
+| `PUT`    | `/api/v1/orders/{{orderNumber}}`                     | Update order (full)                  |
+| `PATCH`  | `/api/v1/orders/{{orderNbr}}/status`                 | Update order status                  |
+| `DELETE` | `/api/v1/orders/{{orderNumber}}`                     | Delete order                         |
+
+#### Inventory      
+| Method | Endpoint                                  | Description                     |
+|--------|-------------------------------------------|---------------------------------|
+| ` GET` | `/api/v1/inventory?skuCode=&quantity=`    | Check inventory availability    |
+
+
+#### File Service (Product Images)
+
+| Method | Endpoint | Description                                                      |
+|------|--------|----------------------------------------------------------------------|
+| `POST` | `/api/v1/files/upload/product/{sku}` | Upload **or update** product image  |
+| `GET` | `/api/v1/files/preview?objectName=` | Generate presigned URL (preview)       |
+| `GET` | `/api/v1/files/download?objectName=` | Download image as stream              |
   
   #### Health
   | Method | Endpoint | Description |
   |--------|---------|-------------|
   | `GET` | `/actuator/health` | Health check for API Gateway |
-
 
 
 ---
