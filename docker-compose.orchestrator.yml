@@ -40,7 +40,7 @@ services:
     volumes:
       - order_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_MYSQL_PASS}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_MYSQL_PASS}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +65,7 @@ services:
       - inventory_mysql_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${ROOT_MYSQL_PASS} || exit 1"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${ROOT_MYSQL_PASS} || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -92,12 +92,35 @@ services:
       - microservices-net
 
   # --------------------------
+  # MySQL for File Service
+  # --------------------------
+  mysql-file:
+    image: mysql:8.0.32
+    container_name: mysql_file_service
+    restart: always
+    ports:
+      - "3310:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ROOT_MYSQL_PASS}
+      MYSQL_DATABASE: file_service
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASS}
+    volumes:
+      - file_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${ROOT_MYSQL_PASS} || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - microservices-net
+  # --------------------------
   # Keycloak
   # --------------------------
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.1
     container_name: keycloak
-    command: ["start-dev"]
+    command: [ "start-dev" ]
     ports:
       - "8181:8080"
     environment:
@@ -206,7 +229,25 @@ services:
       DYNAMIC_CONFIG_ENABLED: 'true'
     networks:
       - microservices-net
+  # --------------------------
+  # MinIO S3
+  # --------------------------
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9100:9000"
+      - "9002:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASS}
+      TZ: UTC
+    volumes:
+      - minio_data:/data
 
+    networks:
+      - microservices-net
   # --------------------------
   # API-gateway Service
   # --------------------------
@@ -306,7 +347,36 @@ services:
       - "8089:8089"
     networks:
       - microservices-net
+  #--------------------------
+  # File-service
+  #--------------------------
+  file-service:
+    image: andr72/file-service:dev-latest
+    container_name: file-service
+    restart: always
+    ports:
+      - "8087:8087"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
 
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-file:3306/file_service
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASS}
+
+      MINIO_URL: http://minio:9000
+      MINIO_PUBLIC_URL: http://host.docker.internal:9100
+      MINIO_ACCESS_KEY: ${MINIO_USER}
+      MINIO_SECRET_KEY: ${MINIO_PASS}
+      MINIO_BUCKET: product-images
+      TZ: UTC
+      JAVA_OPTS: -Duser.timezone=UTC
+    depends_on:
+      - mysql-file
+      - minio
+    networks:
+      - microservices-net
 # --------------------------
 # Volumes
 # --------------------------
@@ -315,3 +385,5 @@ volumes:
   order_mysql_data:
   inventory_mysql_data:
   mongo_data:
+  minio_data:
+  file_mysql_data:
