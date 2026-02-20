@@ -10,7 +10,7 @@ services:
   # Discovery Service (Eureka)
   # --------------------------
   discovery-service:
-    image: andr72/discovery-service:dev-latest
+    image: andr72/discovery-service:1646f61
     container_name: eureka-server
     restart: always
     ports:
@@ -252,7 +252,7 @@ services:
   # API-gateway Service
   # --------------------------
   api-gateway:
-    image: andr72/api-gateway:dev-latest
+    image: andr72/api-gateway:dev-a7a96d1
     container_name: api-gateway
     ports:
       - "9000:9000"
@@ -269,7 +269,7 @@ services:
   # Product Service
   # --------------------------
   product-service:
-    image: andr72/product-service:dev-latest
+    image: andr72/product-service:dev-8dd9e97
     container_name: product-service
     ports:
       - "8080:8080"
@@ -286,7 +286,7 @@ services:
   # Order Service
   # --------------------------
   order-service:
-    image: andr72/order-service:dev-latest
+    image: andr72/order-service:dev-ae5744e
     container_name: order-service
     restart: always
     ports:
@@ -307,7 +307,7 @@ services:
   # Inventory Service
   # --------------------------
   inventory-service:
-    image: andr72/inventory-service:dev-latest
+    image: andr72/inventory-service:dev-ead0e78
     container_name: inventory-service
     restart: always
     ports:
@@ -327,7 +327,7 @@ services:
   # Frontend Angular
   # --------------------------
   frontend:
-    image: andr72/microservice-grid-frontend:dev-latest
+    image: andr72/microservice-grid-frontend:pr-3865272
     container_name: microservice-grid-frontend
     ports:
       - "4200:80"
@@ -338,7 +338,7 @@ services:
   # Notification Service
   # --------------------------
   notification-service:
-    image: andr72/notification-service:dev-latest
+    image: andr72/notification-service:dev-5e313e4
     container_name: notification-service
     restart: always
     environment:
@@ -351,7 +351,7 @@ services:
   # File-service
   #--------------------------
   file-service:
-    image: andr72/file-service:dev-latest
+    image: andr72/file-service:dev-a711b96
     container_name: file-service
     restart: always
     ports:

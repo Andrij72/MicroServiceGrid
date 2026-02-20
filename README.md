@@ -2,6 +2,7 @@
 ![Java](https://img.shields.io/badge/Java-21-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.x-blueviolet)
+![Eureka](https://img.shields.io/badge/Eureka-Service--Discovery-red)
 ![Resilience4j](https://img.shields.io/badge/Resilience4j-Fault--Tolerance-blue)
 ![Kafka](https://img.shields.io/badge/Kafka-Event--Driven-black)
 ![MinIO](https://img.shields.io/badge/MinIO-S3--Compatible-orange)
@@ -29,9 +30,10 @@ This repository serves as the **orchestrator** for the entire system and include
 - **MongoDB / MySQL / PostgreSQL**
 - **Apache Kafka**
 - **Spring Cloud API Gateway**
+- **Spring Cloud Netflix Eureka (Service Discovery)**
 - **Spring Security / Keycloak / OAuth2**
 - **Resilience4J (CircuitBreaker / RateLimiter / Bulkhead)**
-- **Prometheus / Grafana / Loki / Tempo**lkhead)**
+- **Prometheus / Grafana / Loki / Tempo**
 - **Docker / Docker Hub**
 - **Kubernetes (planned)**
 - **GitHub Actions (CI/CD)**
@@ -42,19 +44,19 @@ This repository serves as the **orchestrator** for the entire system and include
 
 ##  🧠 Services Overview    
 
-| Service                  | Description                                        | Status              | Repository                                                       |
-|--------------------------|----------------------------------------------------|---------------------|------------------------------------------------------------------|
-| **Frontend (Angular)**   | Shop + Admin Panel                                 | 🚧 ~70% implemented | [link](https://github.com/Andrij72/MicroserviceGridShopFrontEnd) |
-| **Product Service**      | Manages product catalog                            | ✅ Implemented       | [link](https://github.com/Andrij72/product-service)              |
-| **Order Service**        | Handles customer orders                            | ✅ Implemented       | [link](https://github.com/Andrij72/order-service)                |
-| **Inventory Service**    | Tracks product stock levels                        | 🚧 In progress      | [link](https://github.com/Andrij72/inventory-service)            |
-| **Notification Service** | Sends notifications (Email / Viber)               | ✅ Implemented       | [link](https://github.com/Andrij72/notification-service)         |
-| **File Service**         | Manages product images (upload/preview/download)  | ✅ Implemented       | [link](https://github.com/Andrij72/file-service)                 |
-| **API Gateway**          | Central reactive entry point (Spring WebFlux)     | ✅ Implemented       | [link](https://github.com/Andrij72/api-gateway)                  |
-| **Auth Server**          | Authentication & Authorization (Keycloak / OAuth2)| ✅ Implemented       | -                                                                |
-| **Pay Service**          | Payment and currency operations                   | 🕓 Planned          | -                                                                |
+| Service               | Description                                        | Status                | Repository                                                       |
+|-----------------------|----------------------------------------------------|-----------------------|------------------------------------------------------------------|
+| **Frontend (Angular)** | Shop + Admin Panel                                | 🚧 ~70% implemented   | [link](https://github.com/Andrij72/MicroserviceGridShopFrontEnd) |
+| **Product Service**   | Manages product catalog                            | ✅ Implemented         | [link](https://github.com/Andrij72/product-service)              |
+| **Order Service**     | Handles customer orders                            | ✅ Implemented         | [link](https://github.com/Andrij72/order-service)                |
+| **Inventory Service** | Tracks product stock levels                        | 🚧 In progress        | [link](https://github.com/Andrij72/inventory-service)            |
+| **Notification Service** | Sends notifications (Email / Viber)             | ✅ Implemented         | [link](https://github.com/Andrij72/notification-service)         |
+| **File Service**      | Manages product images (upload/preview/download)   | ✅ Implemented         | [link](https://github.com/Andrij72/file-service)                 |
+| **Discovery Service** | Service registry (Eureka)                          | ✅ Implemented         | [link](https://github.com/Andrij72/discovery-service)            |
+| **API Gateway**       | Central reactive entry point (Spring WebFlux)      | ✅ Implemented         | [link](https://github.com/Andrij72/api-gateway)                  |
+| **Auth Server**       | Authentication & Authorization (Keycloak / OAuth2) | ✅ Implemented         | -                                                                |
+| **Pay Service**       | Payment and currency operations                    | 🕓 Planned            | -                                                                |
 
----
 
 ---
 ## 🌐 High-Level Architecture
@@ -67,8 +69,11 @@ This repository serves as the **orchestrator** for the entire system and include
     🚪 API Gateway
       Spring Cloud Gateway (WebFlux)
            │
+    🧭 Discovery Service (Eureka)
+      Services register & discover dynamically
+           │     
      ┌─────────────┐   ┌─────────────┐
-     │🧾Order Svc  │   │📦 Product  │
+     │🧾Order Svc  │   │📦Product   │
      │ MySQL       │   │ MongoDB     │
      │ REST + Kafka│   │ REST + Kafka│
      └─────┬───────┘   └─────┬───────┘
@@ -104,18 +109,26 @@ This repository serves as the **orchestrator** for the entire system and include
 
 ### 🔹 Data Flows
 * Client → API Gateway → Order Service – REST CRUD operations
-* Order Service → Inventory Service – synchronous stock availability check* 
-* Order Service → Kafka → Notification Service – order lifecycle events* 
-* Order Service → MySQL – persistent storage of orders and user data* 
-* Product Service ↔ Kafka ↔ Order Service – product-related domain events* 
-* Admin → API Gateway → Product Service – create or update product metadata (without images)* 
-* Admin → API Gateway → File Service – upload or update product images* 
-* File Service → MinIO (S3-compatible API) – store product images as objects* 
-* File Service → Frontend – generate and return presigned preview URLs* 
-* Frontend → MinIO (direct) – load images using presigned URLs (no backend proxying)* 
-* Monitoring & Observability – Prometheus (metrics), Grafana (dashboards), Loki (logs), Tempo (traces
+* All services register in Discovery Service (Eureka) on startup
+* API Gateway resolves services dynamically via service-id (no hardcoded URLs)
+* Order Service → Inventory Service – synchronous stock availability check
+* Order Service → Kafka → Notification Service – order lifecycle events
+* Order Service → MySQL – persistent storage of orders and user data 
+* Product Service ↔ Kafka ↔ Order Service – product-related domain events 
+* Admin → API Gateway → Product Service – create or update product metadata (without images) 
+* Admin → API Gateway → File Service – upload or update product images 
+* File Service → MinIO (S3-compatible API) – store product images as objects
+* File Service → Frontend – generate and return presigned preview URLs
+* Frontend → MinIO (direct) – load images using presigned URLs (no backend proxying) 
+* Monitoring & Observability – Prometheus (metrics), Grafana (dashboards), Loki (logs), Tempo (traces)
 
-
+---
+## 🧭 Service Discovery
+The system uses **Spring Cloud Netflix Eureka** as a Service Registry.
+- All microservices register themselves on startup.
+- The API Gateway resolves services dynamically via service-id.
+- No hardcoded service URLs are used.
+- Enables horizontal scaling and dynamic service resolution.
 ---
 
   ## 🛍️ Frontend Application – MicroserviceGridShopFrontend
@@ -136,7 +149,7 @@ This repository serves as the **orchestrator** for the entire system and include
 
 ---
 
-### 🚀 Running the Project
+## 🚀 Running the Project
 
 #### 1️⃣ Start Microservices (Locally)
 
@@ -151,7 +164,7 @@ cd microservice-grid
 ```                   
 #### Start all microservices
 ```bash
-docker-compose -f docker-compose.orchestrator.yml up -d
+docker-compose -f docker-compose.orchestrator_dev.yml up -d
 ````
 2️⃣ Start Observability Stack
 
@@ -181,17 +194,17 @@ networks:
 
 ----
   
- ## 🔐 Authentication & Authorization (Keycloak)
+## 🔐 Authentication & Authorization (Keycloak)
  
- The system uses **Keycloak** as an OAuth2 / OpenID Connect server.
+The system uses **Keycloak** as an OAuth2 / OpenID Connect server.
  
- ### Implemented:
+### Implemented:
  - JWT-based authentication
  - Client Credentials flow (service-to-service)
  - Role-based access control (ADMIN / CLIENT)
  - Integration via Spring Security
  
- ### Keycloak Configuration
+### Keycloak Configuration
  
  The basic Keycloak setup (realm, clients, roles)  
  is documented with screenshots:
@@ -207,7 +220,6 @@ networks:
  > ⚠️ In a production environment, Keycloak configuration  
  > should be done via **realm-export (JSON)** or **Terraform**.  
  > Screenshots are provided **for demonstration and educational purposes only**.
- ----
 
 ---
 ## 🧪🧰 API Testing (Postman Collection)
