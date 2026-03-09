@@ -12,34 +12,95 @@
 ![Observability](https://img.shields.io/badge/Observability-Prometheus%20%7C%20Grafana-yellow)
 
 ----
-**MicroserviceGrid** is a full-fledged microservices system built on **Spring Boot 3 / Spring Cloud**, featuring a reactive entry point, asynchronous communication, fault-tolerance, monitoring, and centralized management via **Docker Compose**.
+**MicroserviceGrid** is a production-style **microservices platform** built with **Spring Boot 3 and Spring Cloud**.
 
-This repository serves as the **orchestrator** for the entire system and includes:
+The project demonstrates a modern distributed system including:
 
-- **Docker Compose configurations** for all microservices
-- **Observability stack** (Prometheus, Grafana, Loki, Tempo)
-- **Keycloak** for authentication and authorization
-- **Apache Kafka** for event-driven communication
-- **Single network** shared by all services
+* reactive API gateway
+* service discovery
+* event-driven architecture
+* centralized authentication
+* observability stack
+* containerized infrastructure
+
+The system simulates a real-world e-commerce platform composed of multiple independent microservices.
+
 ---
 
 ## ⚙️ Tech Stack
+### Backend
+* Java 21
+* Spring Boot 3
+* Spring WebFlux
+* Spring Cloud Gateway
+* Spring Cloud Netflix Eureka
+* Spring Security
+* Keycloak (OAuth2 / OpenID Connect)
+* Resilience4J
 
-- **Java 21 / Spring Boot 3**
-- **Spring WebFlux / Reactive Gateway**
-- **MongoDB / MySQL / PostgreSQL**
-- **Apache Kafka**
-- **Spring Cloud API Gateway**
-- **Spring Cloud Netflix Eureka (Service Discovery)**
-- **Spring Security / Keycloak / OAuth2**
-- **Resilience4J (CircuitBreaker / RateLimiter / Bulkhead)**
-- **Prometheus / Grafana / Loki / Tempo**
-- **Docker / Docker Hub**
-- **Kubernetes (planned)**
-- **GitHub Actions (CI/CD)**
-- **Testcontainers (Integration Tests)**
-- **Angular 20 (Frontend + Admin Panel)**
+### Data Storage
+| Service           | 	Database                     |
+|-------------------|-------------------------------|
+| Product Service   | MongoDB                       |
+| Order Service     | MySQL                         |
+| Inventory Service | MySQL                         |
+| File Service      | MinIO (S3 compatible storage) <br/>|
 
+### Messaging
+* Apache Kafka
+
+### Observability
+* Prometheus – metrics
+* Grafana – dashboards
+* Loki – centralized logging
+* Tempo – distributed tracing
+
+### Infrastructure
+* Docker
+* Docker Compose
+* GitHub Actions (CI/CD)
+* Testcontainers
+
+### Frontend
+* Angular 20
+* Admin
+* Shop UI
+
+---
+
+## 🧠 System Architecture
+```mermaid
+flowchart LR
+
+Client["🅰️ Angular Frontend"]
+
+Gateway["🚪 API Gateway<br>Spring Cloud Gateway"]
+
+Discovery["🧭 Discovery Service<br>Eureka"]
+
+Order["🧾 Order Service<br>Spring Boot + MySQL"]
+Product["📦 Product Service<br>Spring Boot + MongoDB"]
+Inventory["🏬 Inventory Service<br>Spring Boot + MySQL"]
+Notification["📨 Notification Service"]
+File["🖼 File Service<br>MinIO S3"]
+
+Kafka["🟠 Apache Kafka"]
+Minio["☁️ MinIO Object Storage"]
+
+Client --> Gateway
+
+Gateway --> Order
+Gateway --> Product
+Gateway --> File
+
+Order --> Inventory
+Order --> Kafka
+Product --> Kafka
+
+Kafka --> Notification
+
+File --> Minio
+```
 ---
 
 ##  🧠 Services Overview    
@@ -59,79 +120,218 @@ This repository serves as the **orchestrator** for the entire system and include
 
 
 ---
-## 🌐 High-Level Architecture
+## 🔄 Order Processing Flow
 
-```` prototext
-    🅰️ Angular Frontend
-      Shop + Admin Panel
-           │ HTTP / JWT
-           ▼
-    🚪 API Gateway
-      Spring Cloud Gateway (WebFlux)
-           │
-    🧭 Discovery Service (Eureka)
-      Services register & discover dynamically
-           │     
-     ┌─────────────┐   ┌─────────────┐
-     │🧾Order Svc  │   │📦Product   │
-     │ MySQL       │   │ MongoDB     │
-     │ REST + Kafka│   │ REST + Kafka│
-     └─────┬───────┘   └─────┬───────┘
-           │                 │
-           │                 │
-    ┌──────▼──────┐    ┌─────▼──────────┐
-    │🏬Inventory  │   │🖼️ File Service │
-    │ MySQL       │    │ MinIO (S3 API) │
-    │ REST Sync   │    │ Upload / View  │
-    └─────────────┘    └─────┬──────────┘
-                             │
-                        ☁️ MinIO
-                  (S3-compatible Object Storage)
-                             │
-                        🔗 Presigned URLs
-                             │
-                        🌍 Browser / Frontend    
-                             
-    🟠 Kafka Messaging
-    ├── Order → Notification
-    ├── Order → Inventory
-    └── Product → Order
-
-    📊 Observability
-    Prometheus / Grafana / Loki / Tempo
-    
-    🐳 Docker / Docker Compose
-    
- ````
-> The File Service uses **MinIO**, an **S3-compatible object storage**.
-> All image operations rely on the **AWS S3 API**, enabling seamless migration to AWS S3.
-
-
-### 🔹 Data Flows
-* Client → API Gateway → Order Service – REST CRUD operations
-* All services register in Discovery Service (Eureka) on startup
-* API Gateway resolves services dynamically via service-id (no hardcoded URLs)
-* Order Service → Inventory Service – synchronous stock availability check
-* Order Service → Kafka → Notification Service – order lifecycle events
-* Order Service → MySQL – persistent storage of orders and user data 
-* Product Service ↔ Kafka ↔ Order Service – product-related domain events 
-* Admin → API Gateway → Product Service – create or update product metadata (without images) 
-* Admin → API Gateway → File Service – upload or update product images 
-* File Service → MinIO (S3-compatible API) – store product images as objects
-* File Service → Frontend – generate and return presigned preview URLs
-* Frontend → MinIO (direct) – load images using presigned URLs (no backend proxying) 
-* Monitoring & Observability – Prometheus (metrics), Grafana (dashboards), Loki (logs), Tempo (traces)
+```mermaid
+sequenceDiagram
+ 
+participant Client
+participant Gateway
+participant OrderService
+participant InventoryService
+participant Kafka
+participant Notification
+      
+Service Client->>Gateway: POST /orders
+Gateway->>OrderService: createOrder() 
+OrderService->>InventoryService: checkStock()
+InventoryService-->>OrderService: stockAvailable
+OrderService->>Kafka: publish OrderCreated event
+Kafka-->>NotificationService: consume event
+NotificationService->>Client: send notification
+```
 
 ---
+
+## 🧱 Service Architecture
+
+Each microservice follows a layered architecture.
+
+```mermaid
+flowchart TD
+
+Controller["REST Controller"]
+
+Service["Service Layer<br>Business Logic"]
+
+Repository["Repository Layer"]
+
+Database["Database"]
+
+KafkaProducer["Kafka Producer"]
+KafkaConsumer["Kafka Consumer"]
+
+Controller --> Service
+Service --> Repository
+Repository --> Database
+
+Service --> KafkaProducer
+KafkaConsumer --> Service
+```
+
+---
+
+## 📡 Communication Model
+
+The platform uses **two communication styles**.
+
+**_Synchronous communication_**
+
+REST calls between services.
+
+Example:
+
+Order Service → Inventory Service
+
+Used for:
+
+* stock validation 
+* request-response operations
+
+_**Asynchronous communication**_
+
+Event-driven messaging with Kafka.
+
+Example:
+Order Service → Kafka → Notification Service
+
+Benefits:
+* loose coupling
+* scalability
+* resilience
+---
+
 ## 🧭 Service Discovery
-The system uses **Spring Cloud Netflix Eureka** as a Service Registry.
-- All microservices register themselves on startup.
-- The API Gateway resolves services dynamically via service-id.
-- No hardcoded service URLs are used.
-- Enables horizontal scaling and dynamic service resolution.
+
+The system uses **Spring Cloud Netflix Eureka**.
+
+Features:
+* automatic service registration
+* dynamic service discovery
+* no hardcoded service URLs
+* horizontal scaling support
+
+All microservices register themselves during startup.
+
 ---
 
-  ## 🛍️ Frontend Application – MicroserviceGridShopFrontend
+## 🔐 Authentication & Authorization
+
+Authentication is handled by Keycloak.
+
+Supported features:
+* OAuth2
+* OpenID Connect
+* JWT authentication
+* Role-based access control
+
+Roles:
+
+| Role   | Description           |
+|--------|-----------------------|
+| ADMIN  | system administration |
+| CLIENT | customer access    <br/>|	
+
+Service-to-service communication uses Client Credentials Flow.
+
+---
+
+## 🖼 File Storage (MinIO)
+
+The **File Service** manages product images.
+
+Workflow:
+1. Admin uploads image via API
+2. File Service stores object in MinIO
+3. Presigned URL is generated
+4. Frontend loads image directly from MinIO
+
+Benefits:
+* scalable object storage
+* compatible with AWS S3
+* reduced backend load
+---
+
+## 📊 Observability Stack
+
+The platform includes a full **monitoring and tracing stack**.
+
+| Tool       | Purpose                  |
+|------------|--------------------------|
+| Prometheus | metrics collection       |
+| Grafana    | visualization dashboards |
+| Loki       | log aggregation          |
+| Tempo      |   distributed tracing    <br/>|
+---
+
+## 🧪 API Testing (Postman Collection)
+
+A **Postman Collection** is included.
+
+📁 **file:** **[`MicroServiceGrid.postman_collection.json`](./MicroServiceGrid.postman_collection.json)**
+
+
+The collection includes:
+
+* Product API
+* Order API
+* Inventory API
+* File Service API
+* Health endpoints
+
+The Postman collection acts as the **source of truth for the API**.
+
+---
+## 🔎 Example Endpoints
+
+#### Products
+| Method   | Endpoint                                     | Description                      |      
+|----------|----------------------------------------------|----------------------------------|
+| `GET`    | `/api/v1/products`                           | Get all products                 |
+| `GET`    | `/api/v1/products/{{sku}}`                   | Get product by SKU (public)      |
+| `POST`   | `/api/v1/admin/products`                     | Create a new product (admin)     |
+| `POST`   | `/api/v1/admin/products/batch`               | Batch create products (admin)    |
+| `PUT`    | `/api/v1/admin/products/{{sku}}`             | Update product (admin)          <br/> |
+
+
+#### Orders
+| Method   | Endpoint                                             | Description                          |
+|----------|------------------------------------------------------|--------------------------------------|
+| `POST`   | `/api/v1/orders`                                     | Create new order                     |
+| `GET`    | `/api/v1/orders`                                     | Get all orders                       |
+| `GET`    | `/api/v1/orders?page=0&size=10&status=&email=&sort=` | Get orders with pagination & filters |
+| `GET`    | `/api/v1/orders/{{orderNumber}}`                     | Get order by number                  |
+| `PUT`    | `/api/v1/orders/{{orderNumber}}`                     | Update order (full)                  |
+| `PATCH`  | `/api/v1/orders/{{orderNbr}}/status`                 | Update order status                  |
+
+#### Inventory
+| Method | Endpoint                                  | Description                     |
+|--------|-------------------------------------------|---------------------------------|
+| ` GET` | `/api/v1/inventory?skuCode=&quantity=`    | Check inventory availability    |
+
+
+#### File Service (Product Images)
+
+| Method | Endpoint                             | Description                         |
+|--------|--------------------------------------|-------------------------------------|
+| `POST` | `/api/v1/files/upload/product/{sku}` | Upload **or update** product image  |
+| `GET`  | `/api/v1/files/preview?objectName=`  | Generate presigned URL (preview)    |
+| `GET`  | `/api/v1/files/download?objectName=` | Download image as stream           <br/> |
+
+#### Health
+| Method  | Endpoint              | Description                  |
+|---------|-----------------------|------------------------------|
+| `GET`   | `/actuator/health`    | Health check for API Gateway <br/>|
+
+
+
+
+
+
+
+
+
+## 🛍️ Frontend Application – MicroserviceGridShopFrontend
   
   The frontend application of the **Microservice Grid** ecosystem is built with **Angular 20** and serves both the shop and admin panel.  
   It communicates with the API Gateway and backend microservices to provide a modular, reactive, and scalable user interface.
@@ -172,25 +372,9 @@ In the project root, there is a file docker-compose-observability.yml:
 ```bash
 docker-compose -f docker-compose-observability.yml up -d
 ```
-🔹 Observability Stack Services
 
-| Service    | Host Port   | Purpose                    |
-| ---------- | ----------- | -------------------------- |
-| Loki       | 3100        | Logging                    |
-| Prometheus | 9090        | Metrics                    |
-| Tempo      | 3110 / 9411 | Traces / Zipkin            |
-| Grafana    | 3000        | Dashboards & Visualization |
+---
 
-   🔹 Network Configuration
- ```yaml
-networks:
-  microservices-net:
-    external: true          
- ```       
-- All services are connected to microservices-net
-- Grafana depends on Loki, Prometheus, and Tempo via depends_on
-- Anonymous access to Grafana is enabled (Admin role)
-- Tempo stores data in ./docker/tempo/tempo-data
 
 ----
   
@@ -209,7 +393,7 @@ The system uses **Keycloak** as an OAuth2 / OpenID Connect server.
  The basic Keycloak setup (realm, clients, roles)  
  is documented with screenshots:
  
- 📁 [`src/main/resources/static/keycloak/`](src/main/resources/static/keycloak/)
+ 📁 [`src/main/resources/static/keycloak/`](src/main/resources/static.keycloak/)
  
  Screenshots demonstrate:
  - Realm creation
@@ -222,98 +406,21 @@ The system uses **Keycloak** as an OAuth2 / OpenID Connect server.
  > Screenshots are provided **for demonstration and educational purposes only**.
 
 ---
-## 🧪🧰 API Testing (Postman Collection)
 
-A complete Postman Collection is included in the project for manual and automated testing of microservices via Gateway and direct endpoints.
+## 🐳 Docker Infrastructure
 
-📁 **File:** **[`MicroServiceGrid.postman_collection.json`](./MicroServiceGrid.postman_collection_dev.json)**
+The system runs entirely in **Docker containers**.
 
-  
-  The collection covers requests for:
-  
-  - 🔎 **Health checks**
-    - `/actuator/health`
-  
-  - 📦 **Product Service**
-    - Public API: get product by SKU
-    - Admin API: CRUD operations, 
-    batch operations, pagination,
-    image update,
-    - Enable / Disable products
-  
-  - 🧾 **Order Service**
-    - Create / Update / Delete orders
-    - Order status workflow
-    - Pagination, filtering, multi-sort
-  
-  - 🏬 **Inventory Service**
-    - Stock availability checks
-    - Quantity validation
+Components include:
+* microservices
+* Kafka
+* databases
+* Keycloak
+* observability stack
 
-  - 🖼️ **File Service**
-    - Upload product images
-    - Update (replace) existing images
-    - Generate presigned URLs for secure preview
-    - Stream images for download
-    - Decoupled from Product Service (image lifecycle is independent)
-    
-    > MinIO is used as an on-premise S3-compatible storage.
-    > The same code can be migrated to AWS S3 without changes.
-  
-        
-  - 🔐 **Security**
-    - OAuth2 (Client Credentials)
-    - Bearer Token flow via Keycloak
-  
-    > The Postman collection is the **source of truth** for the API.  
-    > The README does not duplicate the full list of endpoints on purpose.
+All services communicate through a shared Docker network:
 
-  
----
-
-### 🔹 Quick Reference: Main Endpoints
-
-#### Products
-| Method   | Endpoint                                     | Description                      |      
-|----------|----------------------------------------------|----------------------------------|
-| `GET`    | `/api/v1/products`                           | Get all products                 |
-| `GET`    | `/api/v1/products/{{sku}}`                   | Get product by SKU (public)      |
-| `POST`   | `/api/v1/admin/products`                     | Create a new product (admin)     |
-| `POST`   | `/api/v1/admin/products/batch`               | Batch create products (admin)    |
-| `PUT`    | `/api/v1/admin/products/{{sku}}`             | Update product (admin)           |
-| `PATCH`  | `/api/v1/admin/products/{{sku}}/enable`      | Enable/disable product (admin)   |
-| `DELETE` | `/api/v1/admin/products/batch`               | Delete multiple products (admin) |
-
-#### Orders
-| Method   | Endpoint                                             | Description                          |
-|----------|------------------------------------------------------|--------------------------------------|
-| `POST`   | `/api/v1/orders`                                     | Create new order                     |
-| `GET`    | `/api/v1/orders`                                     | Get all orders                       |
-| `GET`    | `/api/v1/orders?page=0&size=10&status=&email=&sort=` | Get orders with pagination & filters |
-| `GET`    | `/api/v1/orders/{{orderNumber}}`                     | Get order by number                  |
-| `PUT`    | `/api/v1/orders/{{orderNumber}}`                     | Update order (full)                  |
-| `PATCH`  | `/api/v1/orders/{{orderNbr}}/status`                 | Update order status                  |
-| `DELETE` | `/api/v1/orders/{{orderNumber}}`                     | Delete order                         |
-
-#### Inventory      
-| Method | Endpoint                                  | Description                     |
-|--------|-------------------------------------------|---------------------------------|
-| ` GET` | `/api/v1/inventory?skuCode=&quantity=`    | Check inventory availability    |
-
-
-#### File Service (Product Images)
-
-| Method | Endpoint | Description                                                      |
-|------|--------|----------------------------------------------------------------------|
-| `POST` | `/api/v1/files/upload/product/{sku}` | Upload **or update** product image  |
-| `GET` | `/api/v1/files/preview?objectName=` | Generate presigned URL (preview)       |
-| `GET` | `/api/v1/files/download?objectName=` | Download image as stream              |
-  
-  #### Health
-  | Method | Endpoint | Description |
-  |--------|---------|-------------|
-  | `GET` | `/actuator/health` | Health check for API Gateway |
-
+ **_microservices-net_**
 
 ---
 
@@ -326,20 +433,25 @@ A complete Postman Collection is included in the project for manual and automate
 
 ---
 
-## 🌍 Future Extensions
-- Email / Telegram notifications  
-- Payment microservice (external APIs)  
-- AI analytics: resource usage, order flows, sales
+## 🌍 Future Improvements
+
+Planned extensions:
+* Payment microservice
+* Kubernetes deployment
+* Telegram / Email notifications
+* AI-based analytics for orders and sales
 
 ---
 
-## 🎯 Purpose
+## 🎯 Purpose of the Project
+
 This project demonstrates:
-- Clean microservice architecture with reactive programming
-- Kafka-based event-driven communication
-- Fault tolerance via Resilience4J
-- CI/CD automation and best practices for monitoring & observability
-- Full end-to-end production-ready system
+* modern microservice architecture
+* event-driven communication with Kafka
+* fault tolerance with Resilience4J
+* secure authentication with Keycloak
+* full observability stack
+* containerized infrastructure
 
 ---
 
