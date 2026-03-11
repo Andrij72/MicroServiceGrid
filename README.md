@@ -1,4 +1,4 @@
-# 🧩 Microservice Grid 🧩     
+# 🧩 Microservice Grid 🧩
 ![Java](https://img.shields.io/badge/Java-21-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
 ![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.x-blueviolet)
@@ -72,38 +72,63 @@ The system simulates a real-world e-commerce platform composed of multiple indep
 ```mermaid
 flowchart LR
 
+%% ===== CLIENT =====
 Client["🅰️ Angular Frontend"]
 
+%% ===== API LAYER =====
 Gateway["🚪 API Gateway<br>Spring Cloud Gateway"]
 
+%% ===== DISCOVERY =====
 Discovery["🧭 Discovery Service<br>Eureka"]
 
-Order["🧾 Order Service<br>Spring Boot + MySQL"]
-Product["📦 Product Service<br>Spring Boot + MongoDB"]
-Inventory["🏬 Inventory Service<br>Spring Boot + MySQL"]
+%% ===== MICROSERVICES =====
+Order["🧾 Order Service"]
+Product["📦 Product Service"]
+Inventory["🏬 Inventory Service"]
 Notification["📨 Notification Service"]
-File["🖼 File Service<br>MinIO S3"]
+File["🖼 File Service"]
 
-Kafka["🟠 Apache Kafka"]
-Minio["☁️ MinIO Object Storage"]
+%% ===== INFRASTRUCTURE =====
+Kafka["🟠 Apache Kafka<br>Event Bus"]
+Minio["☁️ MinIO<br>Object Storage"]
 
-Client --> Gateway
+%% ===== REQUEST FLOW =====
+Client -->|HTTP / REST| Gateway
 
-Gateway --> Order
-Gateway --> Product
-Gateway --> File
+Gateway -->|REST| Order
+Gateway -->|REST| Product
+Gateway -->|REST| File
 
-Order --> Inventory
-Order --> Kafka
-Product --> Kafka
+%% ===== SERVICE COMMUNICATION =====
+Order -->|REST Stock Check| Inventory
+Order -->|Publish OrderCreated Event| Kafka
+Kafka -->|Consume Event| Notification
 
-Kafka --> Notification
+Product -->|Upload / Fetch Image| File
+File -->|Store Object| Minio
 
-File --> Minio
+%% ===== DISCOVERY =====
+Order -.-> Discovery
+Product -.-> Discovery
+Inventory -.-> Discovery
+Notification -.-> Discovery
+File -.-> Discovery
+Gateway -.-> Discovery
+
+%% ===== STYLES =====
+classDef gateway fill:#E3F2FD,stroke:#1E88E5,stroke-width:2px;
+classDef service fill:#E8F5E9,stroke:#43A047,stroke-width:2px;
+classDef infra fill:#FFF3E0,stroke:#FB8C00,stroke-width:2px;
+classDef client fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px;
+
+class Client client
+class Gateway gateway
+class Order,Product,Inventory,Notification,File service
+class Kafka,Minio,Discovery infra
 ```
 ---
 
-##  🧠 Services Overview    
+##  🧠 Services Overview
 
 | Service               | Description                                        | Status                | Repository                                                       |
 |-----------------------|----------------------------------------------------|-----------------------|------------------------------------------------------------------|
@@ -138,8 +163,25 @@ OrderService->>InventoryService: checkStock()
 InventoryService-->>OrderService: stockAvailable
 OrderService->>Kafka: publish OrderCreated event
 Kafka-->>NotificationService: consume event
+NotificationService->>Client: send notificationsequenceDiagram
+participant Client
+participant Gateway
+participant OrderService
+participant InventoryService
+participant Kafka
+participant NotificationService
+
+Client->>Gateway: POST /orders
+Gateway->>OrderService: createOrder()
+OrderService->>InventoryService: checkStock() (REST)
+InventoryService-->>OrderService: stockAvailable / stockUnavailable
+OrderService->>Kafka: publish OrderCreated event
+Kafka-->>NotificationService: consume event
 NotificationService->>Client: send notification
 ```
+* Order → Inventory: synchronous REST with Resilience4J CircuitBreaker & RateLimiter
+* Order → Kafka → NotificationService: asynchronous event-driven communication
+* Product → File Service → MinIO: image storage workflow
 
 ---
 
@@ -149,26 +191,19 @@ Each microservice follows a layered architecture.
 
 ```mermaid
 flowchart TD
-
 Controller["REST Controller"]
-
 Service["Service Layer<br>Business Logic"]
-
 Repository["Repository Layer"]
-
 Database["Database"]
-
 KafkaProducer["Kafka Producer"]
 KafkaConsumer["Kafka Consumer"]
 
 Controller --> Service
 Service --> Repository
 Repository --> Database
-
 Service --> KafkaProducer
 KafkaConsumer --> Service
 ```
-
 ---
 
 ## 📡 Communication Model
@@ -185,7 +220,7 @@ Order Service → Inventory Service
 
 Used for:
 
-* stock validation 
+* stock validation
 * request-response operations
 
 _**Asynchronous communication**_
@@ -324,27 +359,20 @@ The Postman collection acts as the **source of truth for the API**.
 | `GET`   | `/actuator/health`    | Health check for API Gateway <br/>|
 
 
-
-
-
-
-
-
-
 ## 🛍️ Frontend Application – MicroserviceGridShopFrontend
-  
-  The frontend application of the **Microservice Grid** ecosystem is built with **Angular 20** and serves both the shop and admin panel.  
-  It communicates with the API Gateway and backend microservices to provide a modular, reactive, and scalable user interface.
-  
-  📁 Repository: [MicroserviceGridShopFrontend](https://github.com/Andrij72/MicroserviceGridShopFrontEnd)
-  
-  ### Key Features
-  - Product catalog (Product Service)
-  - Inventory availability (Inventory Service)
-  - Order creation (Order Service)
-  - Admin panel for managing products, orders, and users
-  - Secure API integration via API Gateway
-  - Docker-ready production build
+
+The frontend application of the **Microservice Grid** ecosystem is built with **Angular 20** and serves both the shop and admin panel.  
+It communicates with the API Gateway and backend microservices to provide a modular, reactive, and scalable user interface.
+
+📁 Repository: [MicroserviceGridShopFrontend](https://github.com/Andrij72/MicroserviceGridShopFrontEnd)
+
+### Key Features
+- Product catalog (Product Service)
+- Inventory availability (Inventory Service)
+- Order creation (Order Service)
+- Admin panel for managing products, orders, and users
+- Secure API integration via API Gateway
+- Docker-ready production build
 
 
 ---
@@ -354,7 +382,7 @@ The Postman collection acts as the **source of truth for the API**.
 #### 1️⃣ Start Microservices (Locally)
 
 To start the full system locally:
-          
+
 ```bash
 git clone https://github.com/Andrij72/MicroserviceGrid.git
 ````
@@ -373,37 +401,34 @@ In the project root, there is a file docker-compose-observability.yml:
 docker-compose -f docker-compose-observability.yml up -d
 ```
 
----
-
-
 ----
-  
+
 ## 🔐 Authentication & Authorization (Keycloak)
- 
+
 The system uses **Keycloak** as an OAuth2 / OpenID Connect server.
- 
+
 ### Implemented:
- - JWT-based authentication
- - Client Credentials flow (service-to-service)
- - Role-based access control (ADMIN / CLIENT)
- - Integration via Spring Security
- 
+- JWT-based authentication
+- Client Credentials flow (service-to-service)
+- Role-based access control (ADMIN / CLIENT)
+- Integration via Spring Security
+
 ### Keycloak Configuration
- 
- The basic Keycloak setup (realm, clients, roles)  
- is documented with screenshots:
- 
- 📁 [`src/main/resources/static/keycloak/`](src/main/resources/static.keycloak/)
- 
- Screenshots demonstrate:
- - Realm creation
- - Clients configuration
- - Roles and mappings
- - Token configuration
- 
- > ⚠️ In a production environment, Keycloak configuration  
- > should be done via **realm-export (JSON)** or **Terraform**.  
- > Screenshots are provided **for demonstration and educational purposes only**.
+
+The basic Keycloak setup (realm, clients, roles)  
+is documented with screenshots:
+
+📁 [`src/main/resources/static/keycloak/`](src/main/resources/static.keycloak/)
+
+Screenshots demonstrate:
+- Realm creation
+- Clients configuration
+- Roles and mappings
+- Token configuration
+
+> ⚠️ In a production environment, Keycloak configuration  
+> should be done via **realm-export (JSON)** or **Terraform**.  
+> Screenshots are provided **for demonstration and educational purposes only**.
 
 ---
 
@@ -420,7 +445,7 @@ Components include:
 
 All services communicate through a shared Docker network:
 
- **_microservices-net_**
+**_microservices-net_**
 
 ---
 
